@@ -81,40 +81,41 @@ function go(i) {
 }
 document.getElementById('prev').addEventListener('click', () => go(idx - 1));
 document.getElementById('next').addEventListener('click', () => go(idx + 1));
-setInterval(() => go(idx + 1), 6000);
+setInterval(() => go(idx + 1), 11000);
 
-// Contact form
-function handleContact(e) {
+// Contact form — Formspree AJAX
+async function handleContact(e) {
   e.preventDefault();
-  const note = document.getElementById('formNote');
   const form = e.target;
-  const data = new FormData(form);
-
-  note.textContent = 'Sending...';
-  note.classList.remove('error');
-
-  fetch(form.action, {
-    method: 'POST',
-    body: data,
-    headers: {
-      'Accept': 'application/json'
-    }
-  }).then(response => {
-    if (response.ok) {
-      note.textContent = '✓ Thank you! Your message has been sent.';
+  const note = document.getElementById('formNote');
+  const btn = document.getElementById('contactSubmit');
+  note.style.color = '';
+  note.textContent = 'Sending your message…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form),
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      note.style.color = '#1f7a3a';
+      note.textContent = '✓ Thank you! Your message has been sent. We will reach out within 24 hours.';
       form.reset();
     } else {
-      return response.json().then(json => {
-        throw new Error(json.error || 'Unable to send message.');
-      });
+      const data = await res.json().catch(() => ({}));
+      note.style.color = '#b00020';
+      note.textContent = (data.errors && data.errors[0] && data.errors[0].message)
+        ? '✗ ' + data.errors[0].message
+        : '✗ Sorry, something went wrong. Please try again or reach us on WhatsApp.';
     }
-  }).catch(() => {
-    note.textContent = '✗ Something went wrong. Please try again or use WhatsApp.';
-    note.classList.add('error');
-  }).finally(() => {
-    setTimeout(() => note.textContent = '', 6000);
-  });
-
+  } catch {
+    note.style.color = '#b00020';
+    note.textContent = '✗ Network error. Please check your connection and try again.';
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { note.textContent = ''; note.style.color=''; }, 9000);
+  }
   return false;
 }
 window.handleContact = handleContact;
@@ -139,11 +140,7 @@ function updateSummary(){
 function selectSize(btn){
   sizeOpts.forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  selected = {
-    product: btn.dataset.product,
-    size: btn.dataset.size,
-    price: +btn.dataset.price
-  };
+  selected = { product: btn.dataset.product, size: btn.dataset.size, price: +btn.dataset.price };
   updateSummary();
 }
 sizeOpts.forEach(b=>b.addEventListener('click',()=>selectSize(b)));
@@ -162,9 +159,7 @@ function openOrder(presetBtn){
 }
 function closeOrder(){orderModal.classList.remove('open');document.body.style.overflow=''}
 
-document.querySelectorAll('.order-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>openOrder(btn));
-});
+document.querySelectorAll('.order-btn').forEach(btn=>{btn.addEventListener('click',()=>openOrder(btn))});
 orderModal.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',closeOrder));
 
 document.getElementById('confirmOrder').addEventListener('click',()=>{
